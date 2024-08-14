@@ -1,247 +1,468 @@
-<h1 align="center">cheerio</h1>
+# cheerio
 
-<h5 align="center">The fast, flexible, and elegant library for parsing and manipulating HTML and XML.</h5>
+Fast, flexible, and lean implementation of core jQuery designed specifically for the server.
 
-<div align="center">
-  <a href="https://github.com/cheeriojs/cheerio/actions/workflows/ci.yml">
-    <img src="https://github.com/cheeriojs/cheerio/actions/workflows/ci.yml/badge.svg" alt="Build Status">
-  </a>
-  <a href="https://coveralls.io/github/cheeriojs/cheerio">
-    <img src="https://img.shields.io/coveralls/github/cheeriojs/cheerio/main" alt="Coverage">
-  </a>
-  <a href="#backers">
-    <img src="https://img.shields.io/opencollective/backers/cheerio" alt="OpenCollective backers">
-  </a>
-  <a href="#sponsors">
-    <img src="https://img.shields.io/opencollective/sponsors/cheerio" alt="OpenCollective sponsors">
-  </a>
-</div>
+## Introduction
+Teach your server HTML.
 
-<br>
+    var cheerio = require("cheerio"),
+        $ = cheerio.load("<h2 class = 'title'>Hello world</h2>");
 
-[中文文档 (Chinese Readme)](https://github.com/cheeriojs/cheerio/wiki/Chinese-README)
+    $('h2.title').text('Hello there!');
+    $('h2').addClass('welcome');
 
-```js
-import * as cheerio from 'cheerio';
-const $ = cheerio.load('<h2 class="title">Hello world</h2>');
-
-$('h2.title').text('Hello there!');
-$('h2').addClass('welcome');
-
-$.html();
-//=> <html><head></head><body><h2 class="title welcome">Hello there!</h2></body></html>
-```
+    $.html();
+    => <h2 class = "title welcome">Hello there!</h2>
 
 ## Installation
-
 `npm install cheerio`
 
+... or to install the package globally:
+
+`npm install -g cheerio`
+
 ## Features
+__&#10084; Familiar syntax:__
+Cheerio implements a subset of core jQuery. Cheerio removes all the DOM inconsistencies and browser cruft from the jQuery library, revealing its truly gorgeous API.
 
-**&#10084; Proven syntax:** Cheerio implements a subset of core jQuery. Cheerio
-removes all the DOM inconsistencies and browser cruft from the jQuery library,
-revealing its truly gorgeous API.
+__&#991; Blazingly fast:__
+Cheerio works with a very simple, consistent DOM model. As a result parsing, manipulating, and rendering are incredibly efficient. Preliminary end-to-end benchmarks suggest that cheerio is about __8x__ faster than JSDOM.
 
-**&#991; Blazingly fast:** Cheerio works with a very simple, consistent DOM
-model. As a result parsing, manipulating, and rendering are incredibly
-efficient.
+__&#10049; Insanely flexible:__
+Cheerio wraps around @tautologistics forgiving htmlparser. Cheerio can parse nearly any HTML or XML document.
 
-**&#10049; Incredibly flexible:** Cheerio wraps around
-[parse5](https://github.com/inikulin/parse5) for parsing HTML and can optionally
-use the forgiving [htmlparser2](https://github.com/fb55/htmlparser2/). Cheerio
-can parse nearly any HTML or XML document. Cheerio works in both browser and
-server environments.
+## What about JSDOM?
+I wrote cheerio because I found myself increasingly frustrated with JSDOM. For me, there were three main sticking points that I kept running into again and again:
+
+__&#8226; JSDOM's built-in parser is too strict:__
+  JSDOM's bundled HTML parser cannot handle many popular sites out there today.
+
+__&#8226; JSDOM is too slow:__
+Parsing big websites with JSDOM has a noticeable delay.
+
+__&#8226; JSDOM feels too heavy:__
+The goal of JSDOM is to provide an identical DOM environment as what we see in the browser. I never really needed all this, I just wanted a simple, familiar way to do HTML manipulation.
 
 ## API
 
+### Markup example we'll be using:
+
+    <ul id = "fruits">
+      <li class = "apple">Apple</li>
+      <li class = "orange">Orange</li>
+      <li class = "pear">Pear</li>
+    </ul>
+
+This is the HTML markup we will be using in all of the API examples.
+
 ### Loading
+First you need to load in the HTML. This step in jQuery is implicit, since jQuery operates on the one, baked-in DOM. With Cheerio, we need to pass in the HTML document.
 
-First you need to load in the HTML. This step in jQuery is implicit, since
-jQuery operates on the one, baked-in DOM. With Cheerio, we need to pass in the
-HTML document.
+This is the _preferred_ method:
 
-```js
-// ESM or TypeScript:
-import * as cheerio from 'cheerio';
+    var cheerio = require('cheerio'),
+        $ = cheerio.load('<ul id = "fruits">...</ul>');
 
-// In other environments:
-const cheerio = require('cheerio');
+Optionally, you can also load in the HTML by passing the string as the context:
 
-const $ = cheerio.load('<ul id="fruits">...</ul>');
+    $ = require('cheerio');
+    $('ul', '<ul id = "fruits">...</ul>');
 
-$.html();
-//=> <html><head></head><body><ul id="fruits">...</ul></body></html>
-```
+Or as the root:
+
+    $ = require('cheerio');
+    $('li', 'ul', '<ul id = "fruits">...</ul>');
+
+You can also pass an extra object to `.load()` if you need to modify any
+of the default parsing options:
+
+    $ = cheerio.load('<ul id = "fruits">...</ul>', { ignoreWhitespace: false, xmlMode: true });
+
+These parsing options are taken directly from htmlparser, therefore any options that can be used in htmlparser
+are valid in cheerio as well. The default options are:
+
+    { ignoreWhitespace: true, xmlMode: false, lowerCaseTags: false }
+
+For a list of options and their effects, see [this](https://github.com/FB55/node-htmlparser/wiki/DOMHandler) and 
+[this](https://github.com/FB55/node-htmlparser/wiki/Parser-options).
 
 ### Selectors
 
-Once you've loaded the HTML, you can use jQuery-style selectors to find elements
-within the document.
+Cheerio's selector implementation is nearly identical to jQuery's, so the API is very similar.
 
-#### \$( selector, [context], [root] )
+#### $( selector, [context], [root] )
+`selector` searches within the `context` scope which searches within the `root` scope. `selector` and `context` can be an string expression, DOM Element, array of DOM elements, or cheerio object. `root` is typically the HTML document string.
 
-`selector` searches within the `context` scope which searches within the `root`
-scope. `selector` and `context` can be a string expression, DOM Element, array
-of DOM elements, or cheerio object. `root`, if provided, is typically the HTML
-document string.
+This selector method is the starting point for traversing and manipulating the document. Like jQuery, it's the primary method for selecting elements in the document, but unlike jQuery it's built on top of the soup-select library, not the Sizzle engine.
 
-This selector method is the starting point for traversing and manipulating the
-document. Like in jQuery, it's the primary method for selecting elements in the
-document.
+    $(".apple", '#fruits').text()
+    => Apple
 
-```js
-$('.apple', '#fruits').text();
-//=> Apple
+    $('ul .pear').attr('class')
+    => pear
 
-$('ul .pear').attr('class');
-//=> pear
+    $('li[class=orange]').html()
+    => <li class = "orange">Orange</li>
 
-$('li[class=orange]').html();
-//=> Orange
-```
+See [cheerio-soupselect](https://github.com/MatthewMueller/cheerio-soupselect) for a list of all available selectors,
+as well as more detailed documentation regarding what is supported and what isn't.
+
+### Attributes
+Methods for getting and modifying attributes.
+
+#### .attr( name, value )
+Method for getting and setting attributes. Gets the attribute value for only the first element in the matched set. If you set an attribute's value to `null`, you remove that attribute. You may also pass a `map` and `function` like jQuery.
+
+    $('ul').attr('id')
+    => fruits
+
+    $('.apple').attr('id', 'favorite').html()
+    => <li class = "apple" id = "favorite">Apple</li>
+
+> See http://api.jquery.com/attr/ for more information
+
+#### .removeAttr( name )
+Method for removing attributes by `name`.
+
+    $('.pear').removeAttr('class').html()
+    => <li>Pear</li>
+
+#### .hasClass( className )
+Check to see if *any* of the matched elements have the given `className`.
+
+    $('.pear').hasClass('pear')
+    => true
+
+    $('apple').hasClass('fruit')
+    => false
+
+    $('li').hasClass('pear')
+    => true
+
+#### .addClass( className )
+Adds class(es) to all of the matched elements. Also accepts a `function` like jQuery.
+
+    $('.pear').addClass('fruit').html()
+    => <li class = "pear fruit">Pear</li>
+
+    $('.apple').addClass('fruit red').html()
+    => <li class = "apple fruit red">Apple</li>
+
+> See http://api.jquery.com/addClass/ for more information.
+
+#### .removeClass( [className] )
+Removes one or more space-separated classes from the selected elements. If no `className` is defined, all classes will be removed. Also accepts a `function` like jQuery.
+
+    $('.pear').removeClass('pear').html()
+    => <li class = "">Pear</li>
+
+    $('.apple').addClass('red').removeClass().html()
+    => <li class = "">Apple</li>
+
+> See http://api.jquery.com/removeClass/ for more information.
+
+
+### Traversing
+
+#### .find(selector)
+Get a set of descendants filtered by `selector` of each element in the current set of matched elements.
+
+    $('#fruits').find('li').size()
+    => 3
+
+#### .parent()
+Gets the parent of the first selected element.
+
+    $('.pear').parent().attr('id')
+    => fruits
+
+#### .next()
+Gets the next sibling thats an element of the first selected element.
+
+    $('.apple').next().hasClass('orange')
+    => true
+
+#### .prev()
+Gets the previous sibling thats an element of the first selected element.
+
+    $('.orange').prev().hasClass('apple')
+    => true
+
+#### .siblings()
+Gets the first selected element's siblings, excluding itself.
+
+    $('.pear').siblings().length
+    => 2
+
+#### .children( selector )
+Gets the children of the first selected element.
+
+    $('#fruits').children().length
+    => 3
+
+    $('#fruits').children('.pear').text()
+    => Pear
+
+#### .each( function(index, element) )
+Iterates over a cheerio object, executing a function for each matched element. When the callback is fired, the function is fired in the context of the DOM element, so `this` refers to the current element, which is equivalent to the function parameter `element`.
+
+    var fruits = [];
+
+    $('li').each(function(i, elem) {
+      fruits[i] = $(this).text();
+    });
+
+    fruits.join(', ');
+    => Apple, Orange, Pear
+
+#### .first()
+Will select the first element of a cheerio object
+
+    $('#fruits').children().first().text()
+    => Apple
+
+#### .last()
+Will select the last element of a cheerio object
+
+    $('#fruits').children().last().text()
+    => Pear
+
+### Manipulation
+Methods for modifying the DOM structure.
+
+#### .append( content, [content, ...] )
+Inserts content as the *last* child of each of the selected elements.
+
+    $('ul').append('<li class = "plum">Plum</li>')
+    $.html()
+    =>  <ul id = "fruits">
+          <li class = "apple">Apple</li>
+          <li class = "orange">Orange</li>
+          <li class = "pear">Pear</li>
+          <li class = "plum">Plum</li>
+        </ul>
+
+#### .prepend( content, [content, ...] )
+Inserts content as the *first* child of each of the selected elements.
+
+    $('ul').prepend('<li class = "plum">Plum</li>')
+    $.html()
+    =>  <ul id = "fruits">
+          <li class = "plum">Plum</li>
+          <li class = "apple">Apple</li>
+          <li class = "orange">Orange</li>
+          <li class = "pear">Pear</li>
+        </ul>
+
+#### .after( content, [content, ...] )
+Insert content next to each element in the set of matched elements.
+
+    $('.apple').after('<li class = "plum">Plum</li>')
+    $.html()
+    =>  <ul id = "fruits">
+          <li class = "apple">Apple</li>
+          <li class = "plum">Plum</li>
+          <li class = "orange">Orange</li>
+          <li class = "pear">Pear</li>
+        </ul>
+
+#### .before( content, [content, ...] )
+Insert content previous to each element in the set of matched elements.
+
+    $('.apple').before('<li class = "plum">Plum</li>')
+    $.html()
+    =>  <ul id = "fruits">
+          <li class = "plum">Plum</li>
+          <li class = "apple">Apple</li>
+          <li class = "orange">Orange</li>
+          <li class = "pear">Pear</li>
+        </ul>
+
+#### .remove( [selector] )
+Removes the set of matched elements from the DOM and all their children. `selector` filters the set of matched elements to be removed.
+
+    $('.pear').remove()
+    $.html()
+    =>  <ul id = "fruits">
+          <li class = "apple">Apple</li>
+          <li class = "orange">Orange</li>
+        </ul>
+
+#### .replaceWith( content )
+Replaces matched elements with `content`.
+
+    var plum = $('<li class = "plum">Plum</li>')
+    $('.pear').replaceWith(plum)
+    $.html()
+    => <ul id = "fruits">
+         <li class = "apple">Apple</li>
+         <li class = "orange">Orange</li>
+         <li class = "plum">Plum</li>
+       </ul>      
+
+#### .empty()
+Empties an element, removing all it's children.
+
+    $('ul').empty()
+    $.html()
+    =>  <ul id = "fruits"></ul>
+
+#### .html( [htmlString] )
+Gets an html content string from the first selected element. If `htmlString` is specified, each selected element's content is replaced by the new content.
+
+    $('.orange').html()
+    => <li class = "orange">Orange</li>
+
+    $('#fruits').html('<li class = "mango">Mango</li>').html()
+    =>  <ul id="fruits">
+          <li class="mango">Mango</li>
+        </ul>
+
+#### .text( [textString] )
+Get the combined text contents of each element in the set of matched elements, including their descendants.. If `textString` is specified, each selected element's content is replaced by the new text content.
+
+    $('.orange').text()
+    => Orange
+
+    $('ul').text()
+    =>  Apple
+        Orange
+        Pear
 
 ### Rendering
+When you're ready to render the document, you can use `html` utility function:
 
-When you're ready to render the document, you can call the `html` method on the
-"root" selection:
+    $.html()
+    =>  <ul id = "fruits">
+          <li class = "apple">Apple</li>
+          <li class = "orange">Orange</li>
+          <li class = "pear">Pear</li>
+        </ul>
 
-```js
-$.root().html();
-//=>  <html>
-//      <head></head>
-//      <body>
-//        <ul id="fruits">
-//          <li class="apple">Apple</li>
-//          <li class="orange">Orange</li>
-//          <li class="pear">Pear</li>
-//        </ul>
-//      </body>
-//    </html>
-```
+If you want to render just a piece of the document you can use selectors:
 
-If you want to render the
-[`outerHTML`](https://developer.mozilla.org/en-US/docs/Web/API/Element/outerHTML)
-of a selection, you can use the `outerHTML` prop:
+    $('.pear').html()
+    => <li class = "pear">Pear</li>
+### Miscellaneous
+DOM element methods that don't fit anywhere else
 
-```js
-$('.pear').prop('outerHTML');
-//=> <li class="pear">Pear</li>
-```
+#### .get( [index] )
+Retrieve the DOM elements matched by the cheerio object. If no index is specified, it will get an array of all matched elements.
 
-You may also render the text content of a Cheerio object using the `text`
-method:
+    $('li').get(0)
+    => { raw: 'li class="apple"', ... }
 
-```js
-const $ = cheerio.load('This is <em>content</em>.');
-$('body').text();
-//=> This is content.
-```
+    $('li').get()
+    => [ {...}, {...}, {...} ]
 
-### The "DOM Node" object
+#### .size()
+Return the number of elements in the cheerio object. Same as `length`.
 
-Cheerio collections are made up of objects that bear some resemblance to
-[browser-based DOM nodes](https://developer.mozilla.org/en-US/docs/Web/API/Node).
-You can expect them to define the following properties:
+    $('li').size()
+    => 3
 
-- `tagName`
-- `parentNode`
-- `previousSibling`
-- `nextSibling`
-- `nodeValue`
-- `firstChild`
-- `childNodes`
-- `lastChild`
+#### .toArray()
+Retrieve all the DOM elements contained in the jQuery set, as an array.
+
+    $('li').toArray()
+    => [ {...}, {...}, {...} ]
+    
+#### .clone() ####
+Clone the cheerio object.
+
+    var moreFruit = $('#fruits').clone()
+    
+### Utilities
+
+#### $.dom()
+Get the raw DOM of the parsed HTML document.
+
+    $.dom()
+    => [ { raw: 'ul id="fruits"',
+        data: 'ul id="fruits"',
+        type: 'tag',
+        name: 'ul',
+        attribs: { id: 'fruits' },
+        children:
+         [ [Object],
+           [Object],
+           [Object],
+           [Object],
+           [Object],
+           [Object],
+           [Object] ],
+        parent: null,
+        prev: null,
+        next: null } ]
+
+#### $.isArray( array )
+Checks to see the passed argument is an array.
+
+    $.isArray( $.dom() )
+    => true
+
+#### $.inArray( elem, arr )
+Checks to see if the element is in the array
+
+#### $.makeArray( obj )
+Turns an array-like object (like $) into a native array.
+
+#### $.each( obj, function(index, elem) )
+Generic iterator function.
+
+#### $.merge( one, two )
+Merge the contents of two arrays together into the first array.
 
 ## Screencasts
 
-[https://vimeo.com/31950192](https://vimeo.com/31950192)
+http://vimeo.com/31950192
 
-> This video tutorial is a follow-up to Nettut's "How to Scrape Web Pages with
-> Node.js and jQuery", using cheerio instead of JSDOM + jQuery. This video shows
-> how easy it is to use cheerio and how much faster cheerio is than JSDOM +
-> jQuery.
+> This video tutorial is a follow-up to Nettut's "How to Scrape Web Pages with Node.js and jQuery", using cheerio instead of JSDOM + jQuery. This video shows how easy it is to use cheerio and how much faster cheerio is than JSDOM + jQuery.
 
-## Cheerio in the real world
+## Testing
 
-Are you using cheerio in production? Add it to the
-[wiki](https://github.com/cheeriojs/cheerio/wiki/Cheerio-in-Production)!
+To run the test suite, download the repository, then within the cheerio directory, run:
 
-## Sponsors
+    npm install .
+    make test
 
-Does your company use Cheerio in production? Please consider
-[sponsoring this project](https://github.com/cheeriojs/cheerio?sponsor=1)! Your
-help will allow maintainers to dedicate more time and resources to its
-development and support.
+This will download the development packages and run the test suite.
+## Special Thanks
 
-**Headlining Sponsors**
+This library stands on the shoulders of some incredible developers. A special thanks to:
 
-<!-- BEGIN SPONSORS: headliner -->
+__&#8226; @tautologistics' node-htmlparser:__
+This HTML parser can parse anything and produces really consistent results, even when the HTML string has errors. This man is a genius.
 
-<a href="https://tidelift.com/subscription/pkg/npm-cheerio" target="_blank" rel="noopener noreferrer">
-            <img height="128px" width="128px" src="https://humble.imgix.net/https%3A%2F%2Fgithub.com%2Ftidelift.png?ixlib=js-3.8.0&w=128&h=128&fit=fillmax&fill=solid&s=0713e6ee5c7ab01e7559df695c1e8cd9" title="Tidelift" alt="Tidelift"></img>
-          </a>
-<a href="https://github.com/" target="_blank" rel="noopener noreferrer">
-            <img height="128px" width="128px" src="https://humble.imgix.net/https%3A%2F%2Fgithub.com%2Fgithub.png?ixlib=js-3.8.0&w=128&h=128&fit=fillmax&fill=solid&s=a1e87ca289de84eb32ea85432cf8ad11" title="Github" alt="Github"></img>
-          </a>
-<a href="https://www.airbnb.com/" target="_blank" rel="noopener noreferrer">
-            <img height="128px" width="128px" src="https://humble.imgix.net/https%3A%2F%2Fgithub.com%2Fairbnb.png?ixlib=js-3.8.0&w=128&h=128&fit=fillmax&fill=solid&s=384cad45e10faea516202ad10801f895" title="AirBnB" alt="AirBnB"></img>
-          </a>
+__&#8226; @harryf's node-soupselect:__
+What an incredibly fast and precise CSS selector engine. I never really liked the feature-rich selector engines &#8212; I think this engine strikes a great balance.
 
-<!-- END SPONSORS -->
+__&#8226; @jQuery team:__
+The core API is the best of it's class and despite dealing with all the browser inconsistencies the code base is extremely clean and easy to follow. Much of cheerio's implementation and documentation is from jQuery. Thanks guys.
 
-**Other Sponsors**
-
-<!-- BEGIN SPONSORS: sponsor -->
-
-<a href="https://www.casinoonlineaams.com" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fcasinoonlineaamscom%2Fc59b0fd%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=7b90355c5df11c3ac489869b01279fee" title="Casinoonlineaams.com" alt="Casinoonlineaams.com"></img>
-          </a>
-<a href="https://casinoutansvensklicens.co/" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fcasino-utan-svensk-licens3%2Ff7e9357%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=45ea355f0c3411592219714943df29dd" title="Casino utan svensk licens" alt="Casino utan svensk licens"></img>
-          </a>
-<a href="https://www.zenrows.com" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fzenrows%2F3199d4b%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=8a51972a1004283672506d2e3aedd25b" title="ZenRows" alt="ZenRows"></img>
-          </a>
-<a href="https://slotoking.ua/games/all-slots/" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Figrovye-avtomaty-ua%2F96bfde3%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=07091c88a0b859ecaa81ef10fadf3075" title="Ігрові автомати" alt="Ігрові автомати"></img>
-          </a>
-<a href="https://onlinecasinosspelen.com" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fonlinecasinosspelen%2F4ce3830%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=60e5dd9f3993a754d0e5d47a43ff7462" title="OnlineCasinosSpelen" alt="OnlineCasinosSpelen"></img>
-          </a>
-<a href="https://casinoZonderregistratie.net/" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fczrnet%2F24e6252%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=d9b81b3c39bca4d3a8f279e79c5eec8d" title="CasinoZonderRegistratie.net" alt="CasinoZonderRegistratie.net"></img>
-          </a>
-<a href="https://Nieuwe-Casinos.net" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fnieuwecasinos%2Fee150d6%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=c2663f8b5dcfc983ef5641028d7b430b" title="Nieuwe-Casinos.net" alt="Nieuwe-Casinos.net"></img>
-          </a>
-<a href="https://vedonlyontiyhtiot.com/" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fvedonlyontiyhtiot-com%2Favatar.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=9983cbab4b2e4b4f715c31acaa27bea6" title="Vedonlyontiyhtiot.com" alt="Vedonlyontiyhtiot.com"></img>
-          </a>
-<a href="https://puter.com/" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fputer%2Ff8643c4%2Favatar.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=533e28124d885c9d8b261e464db029c5" title="Puter.com" alt="Puter.com"></img>
-          </a>
-<a href="https://www.nodepositcasinobonus.org/" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fno-deposit-bonus%2F912e261%2Flogo.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=ce708f21996657eef8c5207fb84312b5" title="No Deposit Bonus" alt="No Deposit Bonus"></img>
-          </a>
-
-<!-- END SPONSORS -->
-
-## Backers
-
-[Become a backer](https://github.com/cheeriojs/cheerio?sponsor=1) to show your
-support for Cheerio and help us maintain and improve this open source project.
-
-<!-- BEGIN SPONSORS: backer -->
-
-<a href="https://kafidoff.com" target="_blank" rel="noopener noreferrer">
-            <img height="64px" width="64px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fkafidoff-vasy%2Fd7ff85c%2Favatar.png?ixlib=js-3.8.0&w=64&h=64&fit=fillmax&fill=solid&s=a41c66c2f9b1d3a7a241e425e7aa2d09" title="Vasy Kafidoff" alt="Vasy Kafidoff"></img>
-          </a>
-<a href="https://medium.com/norch" target="_blank" rel="noopener noreferrer">
-            <img height="48px" width="48px" src="https://humble.imgix.net/https%3A%2F%2Fimages.opencollective.com%2Fespenklem%2F7e8cd40%2Favatar.png?ixlib=js-3.8.0&w=48&h=48&fit=fillmax&fill=solid&s=f727bc0f59d1738188ec8e4499123149" title="Espen Klem" alt="Espen Klem"></img>
-          </a>
-
-<!-- END SPONSORS -->
-
+__&#8226; @visionmedia:__
+The style, the structure, the open-source"-ness" of this library comes from studying TJ's style and using many of his libraries. This dude consistently pumps out high-quality libraries and has always been more than willing to help or answer questions. You rock TJ.
 ## License
 
-MIT
+(The MIT License)
+
+Copyright (c) 2012 Matt Mueller &lt;mattmuelle@gmail.com&gt;
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
